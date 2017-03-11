@@ -2,14 +2,32 @@
 #define MAP_H
 
 #include <QVector>
-#include <QObject>
 #include <QPoint>
 #include <QJsonObject>
+#include <QHash>
 
-class Map : public QObject
+struct Player {
+    Player (const QJsonObject &data) {
+        id = data["id"].toInt();
+        x = data["x"].toInt();
+        y = data["y"].toInt();
+        dangerous = data["isdangerous"].toBool();
+    }
+
+    int id;
+    int x;
+    int y;
+    bool dangerous;
+
+    bool isNextTo(const int x_, const int y_) const {
+        return ((x == x_ && qAbs(y - y_) <= 2) ||
+                (qAbs(x - x_) <= 2 && y == y_));
+    }
+};
+
+
+struct Map
 {
-    Q_OBJECT
-
 public:
     enum TileCorner {
         UpperLeft,
@@ -17,14 +35,12 @@ public:
         BottomLeft,
         BottomRight
     };
-    Q_ENUM(TileCorner)
 
     enum Powerup {
         NoPowerup = 0,
         NormalPellet = 1,
         SuperPellet = 2
     };
-    Q_ENUM(Powerup)
 
     enum TileType {
         FloorTile = 0,
@@ -34,9 +50,8 @@ public:
         SuperPelletTile,
         InvalidTile = -1
     };
-    Q_ENUM(TileType)
 
-    explicit Map(QObject *parent);
+    explicit Map();
 
     bool loadMap(const QJsonObject &data);
 
@@ -56,15 +71,10 @@ public:
 
     int pelletsLeft() const { return m_pelletsLeft; }
 
-    QVector<QPoint> startingPositions() const { return m_startingPositions; }
     QPoint monsterSpawn() const { return m_monsterSpawn; }
 
-signals:
-    void mapChanged();
-    void powerupChanged(int x, int y);
-    void powerupVisibleChanged(int x, int y, bool visible);
-    void pelletsLeftChanged();
-    void totalPelletsChanged();
+
+    QHash<int, Player> players;
 
 private:
     TileType tileAt(int x, int y) const;
@@ -73,13 +83,10 @@ private:
     int m_height;
     QVector<Powerup> m_powerups;
     QVector<TileType> m_tiles;
-    QVector<QPoint> m_startingPositions;
     QPoint m_monsterSpawn;
     QString m_name;
     int m_pelletsLeft;
     int m_totalPellets;
-    int m_arenaTop;
-    int m_arenaBottom;
 };
 
 #endif // MAP_H

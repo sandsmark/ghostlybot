@@ -6,9 +6,9 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QCoreApplication>
+#include <QElapsedTimer>
 
 MainLoop::MainLoop(QObject *parent) : QObject(parent),
-    m_map(new Map(this)),
     m_socket(new QTcpSocket(this))
 {
     connect(m_socket, &QTcpSocket::readyRead, this, &MainLoop::onReadyRead);
@@ -46,16 +46,18 @@ void MainLoop::parseMessage(const QByteArray &message)
 
     if (messageType == "welcome") {
         qDebug() << "Got welcome";
-        m_map->loadMap(object["map"].toObject());
+        m_currentState.map.loadMap(object["map"].toObject());
         m_socket->write("NAME MARTiN\n");
         return;
     } else if (messageType == "stateupdate") {
         parseStateUpdate(object["gamestate"].toObject());
         findAction();
     } else if (messageType == "dead") {
+        m_agent.update(m_currentState, m_lastAction, m_currentState, -100);
         qDebug() << "I died";
     } else if (messageType == "endofround") {
         qDebug() << "Round over";
+        m_agent.store();
     }
 }
 
@@ -65,36 +67,59 @@ void MainLoop::parseStateUpdate(const QJsonObject &state)
         qWarning() << "Got empty gamestate!";
         return;
     }
+    if (!state.contains("map")) {
+        qDebug() << "Missing map in" << state;
+    }
 
-    m_map->loadMap(state["map"].toObject());
+//    m_prevState = std::move(m_currentState);
+//    std::swap(m_prevState, m_currentState);
+    State newState;
+
+    newState.map.loadMap(state["map"].toObject());
 
     const QJsonObject me = state["you"].toObject();
-    m_currentX = me["x"].toInt();
-    m_currentY = me["y"].toInt();
+    newState.x = me["x"].toInt();
+    newState.y = me["y"].toInt();
+    newState.score = me["score"].toInt();
+    newState.dangerous = me["isdangerous"].toInt();
 
-    m_others.clear();
+    newState.map.players.clear();
     const QJsonArray others = state["others"].toArray();
     for (const QJsonValue &otherVal : others) {
         const QJsonObject other = otherVal.toObject();
-        m_others.insert(other["id"].toInt(), Player(other));
+        newState.map.players.insert(other["id"].toInt(), Player(other));
     }
+    m_agent.update(m_currentState, m_lastAction, newState);
+
+    m_currentState = std::move(newState);
 }
 
 void MainLoop::findAction()
 {
-    int action = qrand() % 4;
-    switch(action) {
-    case 0:
+    QElapsedTimer timer;
+    timer.start();
+    switch(m_agent.getAction(m_currentState)) {
+    case Agent::Up:
+//        qDebug() << "up";
         m_socket->write("UP\n");
         break;
-    case 1:
+    case Agent::Left:
+//        qDebug() << "left";
         m_socket->write("LEFT\n");
         break;
-    case 2:
+    case Agent::Right:
+//        qDebug() << "right";
         m_socket->write("RIGHT\n");
         break;
-    case 3:
+    case Agent::Down:
+//        qDebug() << "down";
         m_socket->write("DOWN\n");
         break;
+    default:
+        break;
+    }
+
+    if (timer.elapsed() > 5) {
+        qDebug() << "Action calculated in" << timer.elapsed() << "ms";
     }
 }

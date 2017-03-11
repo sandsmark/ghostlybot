@@ -1,24 +1,14 @@
 #ifndef MAINLOOP_H
 #define MAINLOOP_H
 
+#include "agent.h"
+#include "map.h"
+
 #include <QObject>
 #include <QHash>
 #include <QJsonObject>
 
-class Map;
 class QTcpSocket;
-
-struct Player {
-    Player (const QJsonObject &data) {
-        id = data["id"].toInt();
-        x = data["x"].toInt();
-        y = data["y"].toInt();
-    }
-
-    int id;
-    int x;
-    int y;
-};
 
 class MainLoop : public QObject
 {
@@ -41,12 +31,11 @@ private:
     void parseStateUpdate(const QJsonObject &state);
     void findAction();
 
-    Map *m_map;
+    State m_currentState;
+    State m_prevState;
+    Agent::Action m_lastAction;
     QTcpSocket *m_socket;
-    bool m_alive;
-    int m_currentX;
-    int m_currentY;
-    QHash<int, Player> m_others;
+    Agent m_agent;
 };
 
 #endif // MAINLOOP_H

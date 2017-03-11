@@ -5,7 +5,7 @@
 #include <QJsonArray>
 #include <QJsonValue>
 
-Map::Map(QObject *parent) : QObject(parent),
+Map::Map() :
     m_width(0),
     m_height(0),
     m_pelletsLeft(0),
@@ -15,7 +15,6 @@ Map::Map(QObject *parent) : QObject(parent),
 
 bool Map::loadMap(const QJsonObject &data)
 {
-    m_startingPositions.clear();
     m_totalPellets = 0;
 
     m_width = data["width"].toInt();
@@ -23,7 +22,7 @@ bool Map::loadMap(const QJsonObject &data)
 
     QJsonArray tiles = data["content"].toArray();
     if (tiles.isEmpty()) {
-        qWarning() << "No map contents!";
+        qWarning() << "No map contents!" << data;
         return false;
     }
 
@@ -61,7 +60,6 @@ bool Map::loadMap(const QJsonObject &data)
                 break;
             case '#':
                 m_tiles.append(FloorTile);
-                m_startingPositions.append(QPoint(x, y));
                 break;
             case '@':
                 m_tiles.append(FloorTile);
@@ -74,9 +72,6 @@ bool Map::loadMap(const QJsonObject &data)
             }
         }
     }
-
-    emit mapChanged();
-    emit totalPelletsChanged();
 
     m_powerups.clear();
     m_pelletsLeft = 0;
@@ -158,11 +153,9 @@ Map::Powerup Map::takePowerup(int x, int y)
 
     if (powerup == NormalPellet) {
         m_pelletsLeft--;
-        emit pelletsLeftChanged();
     }
 
     m_powerups[pos] = NoPowerup;
-    emit powerupVisibleChanged(x, y, false);
     return powerup;
 }
 
