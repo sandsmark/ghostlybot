@@ -16,6 +16,7 @@ Agent::Agent()
 {
     m_weights.resize(FeatureCount);
     load();
+//    m_weights[PelletDistance] = -1.;
 //    m_weights.resize(4);
 }
 
@@ -61,6 +62,7 @@ void Agent::load()
     QFile weightFile("weights.txt");
     if (!weightFile.open(QIODevice::ReadOnly)) {
         qWarning() << "Failed to open weight file for reading";
+//        m_weights[PelletDistance] = -1;
         return;
     }
 
@@ -73,7 +75,7 @@ void Agent::load()
     }
 }
 
-void Agent::update(const State &state, const Agent::Action action, const State &nextState, qreal bonuspoints)
+void Agent::update(const State &state, const Agent::Action action, const State &nextState, const qreal bonuspoints)
 {
 //    if (bonuspoints) {
 //        qDebug() << bonuspoints;
@@ -82,25 +84,31 @@ void Agent::update(const State &state, const Agent::Action action, const State &
     const qreal prevValue = getQValue(state, action);
     Q_ASSERT(!qIsNaN(prevValue));
 //    const qreal currentValue = (1. - learningRate) * prevValue;
-    qreal reward = bonuspoints;
-    if (nextState.score && state.score) {
-        reward += nextState.score - state.score;
-    }
+    const qreal reward = bonuspoints + nextState.score - state.score;
+//    if (nextState.score && state.score) {
+//    reward += nextState.score - state.score;
+//    }
+//    if (!reward) {
+//        return;
+//    }
 //    qreal reward = nextState.score - state.score + bonuspoints;
+//    if (reward) {
+//        qDebug() << "REWARD:" << reward;
+//    }
     const qreal nextValue = learningRate * (reward + discountFactor * getQValue(nextState, getAction(state)));
     Q_ASSERT(!qIsNaN(nextValue));
     const qreal difference = nextValue - prevValue;
     Q_ASSERT(!qIsNaN(difference));
 
-    QVector<qreal> f = calculateFeatures(state, action);
+
+    QVector<qreal> features = calculateFeatures(state, action);
 //    qDebug() << f.eatsFood << f.enemiesNearby << f.pelletDistance << f.superPelletDistance;
 
     for (int i=0; i<m_weights.size(); i++) {
 //        if (difference) {
 //            qDebug() << difference;
 //        }
-        Q_ASSERT(!qIsNaN(f[i]));
-        m_weights[i] += learningRate * difference * f[i];
+        m_weights[i] += learningRate * difference * features[i];
     }
 //    if (!getValidActions(state).isEmpty()) {
 //        m_weights[f] = currentValue + nextValue;
@@ -112,23 +120,8 @@ void Agent::update(const State &state, const Agent::Action action, const State &
 qreal Agent::getQValue(const State &state, const Action action)
 {
     const QVector<qreal> f = calculateFeatures(state, action);
-//    if (m_weights.contains(f)) {
-//        qDebug() << f.eatsFood << f.enemiesNearby << f.pelletDistance;// << f.superPelletDistance;
-//    }
-//    return m_weights[f];
-    qreal sum = 0;
-    for (int i=0; i<f.length(); i++) {
-        Q_ASSERT(!qIsInf(f[i]));
-        Q_ASSERT(!qIsInf(m_weights[i]));
-        sum += f[i] * m_weights[i];
-    }
-    Q_ASSERT(!qIsInf(sum));
-//    sum += f.enemiesNearby * m_weights[0];
-//    sum += f.eatsFood * m_weights[1];
-//    sum += f.pelletDistance * m_weights[2];
-//    sum += f.bias * m_weights[3];
-    return sum;
-//    return m_weights[calculateFeatures(state, action)];
+
+    return std::inner_product(f.begin(), f.end(), m_weights.begin(), 0.);
 }
 
 Agent::Action Agent::getAction(const State &state)
@@ -150,6 +143,7 @@ Agent::Action Agent::getAction(const State &state)
         return actions[qrand() % actions.count()];
     }
 
+//    qDebug() << "============";
     qreal bestValue = -1;
     Action bestAction = Up;
     for (const Action &candidate : actions) {
@@ -159,6 +153,11 @@ Agent::Action Agent::getAction(const State &state)
             bestAction = candidate;
         }
     }
+//    QVector<qreal> features = calculateFeatures(state, bestAction);
+//    qDebug() << "Chose" <<bestAction;
+//    qDebug() << "============";
+//    qDebug() << bestAction << bestValue << features[PelletDistance] << '\n';
+
 
 //    if (bestValue > 0) {
 //        qDebug() << bestAction;
@@ -231,7 +230,7 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 //        }
 //    }
 
-    const qreal area = state.map.height() * state.map.width();
+    const qreal maxDistance = state.map.height() + state.map.width();
     // TODO: search smarter out from current pos or something
 
     QHash<PathPoint, PathPoint> cameFrom;
@@ -244,10 +243,12 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 
     QSet<PathPoint> visited;
     PathPoint closestPellet(-1, -1);
-    closestPellet.pathLength = area;
+    closestPellet.pathLength = maxDistance;
     PathPoint closestEnemy(-1, -1);
-    closestEnemy.pathLength = area;
+    closestEnemy.pathLength = maxDistance;
     bool closestDangerous = false;
+    PathPoint closestVictim(-1, -1);
+    closestVictim.pathLength = maxDistance;
 
     while (!queue.empty()) {
         const PathPoint current = queue.top();
@@ -262,12 +263,21 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 
         // FIXME
         for (const Player &enemy : state.map.players) {
-            if (enemy.x != current.x || enemy.y != current.y || !enemy.dangerous) {
+            if (enemy.x != current.x || enemy.y != current.y) {
                 continue;
             }
-            if (current.pathLength < closestEnemy.pathLength) {
-                closestEnemy = current;
-                closestDangerous = enemy.dangerous;
+            if (current.pathLength >= closestEnemy.pathLength) {
+                continue;
+            }
+            if (enemy.dangerous) {
+                if (current.pathLength < closestEnemy.pathLength) {
+                    closestEnemy = current;
+                    closestDangerous = enemy.dangerous;
+                }
+            } else if (state.dangerous) {
+                if (current.pathLength < closestVictim.pathLength) {
+                    closestVictim = current;
+                }
             }
         }
 
@@ -307,73 +317,110 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
         }
     }
 
+    features[VictimDistance] = closestVictim.pathLength / maxDistance;
+    if (state.map.powerupAt(nextX, nextY) == Map::NoPowerup) {
+        features[PelletDistance] = closestPellet.pathLength / maxDistance;
+    } else {
+        features[PelletDistance] = 0;
+    }
 //    qDebug() << closestPellet.x;
     if (cameFrom.contains(closestPellet)) {
-        features[PelletDistance] = closestPellet.pathLength / area;
+        features[PelletDistance] = closestPellet.pathLength / maxDistance;
 
-        while (cameFrom[closestPellet].x != state.x || cameFrom[closestPellet].y != state.y) {
-//            qDebug() << closestPellet.x << closestPellet.y;
-            closestPellet = cameFrom[closestPellet];
-            if (!cameFrom.contains(closestPellet)) {
-                qWarning() << "Invalid pellet path";
-                break;
-            }
-        }
+//        while (cameFrom[closestPellet].x != nextX || cameFrom[closestPellet].y != nextY) {
+////            qDebug() << closestPellet.x << closestPellet.y;
+//            closestPellet = cameFrom[closestPellet];
+//            if (!cameFrom.contains(closestPellet)) {
+//                qWarning() << "Invalid pellet path";
+//                break;
+//            }
+//        }
 
-        if (closestPellet.x > nextX) {
+//        qDebug() << action;
+//        if (closestPellet.x > nextX) {
 //            qDebug() << "Pellet down";
-            features[PelletRight] = 1.;
-        } else if (closestPellet.x < nextX) {
-            features[PelletLeft] = 1.;
+////            features[PelletRight] = 1.;
+//        } else if (closestPellet.x < nextX) {
+////            features[PelletLeft] = 1.;
 //            qDebug() << "Pellet up";
-        } else if (closestPellet.y > nextY) {
-            features[PelletDown] = 1.;
+//        } else if (closestPellet.y > nextY) {
+////            features[PelletDown] = 1.;
 //            qDebug() << "Pellet right";
-        } else if (closestPellet.y < nextY) {
-            features[PelletUp] = 1.;
+//        } else if (closestPellet.y < nextY) {
+////            features[PelletUp] = 1.;
 //            qDebug() << "Pellet left";
-        } else {
-            qWarning() << "Don't know which direction the pellet is in";
-        }
+//        } else {
+//            qWarning() << "Don't know which direction the pellet is in";
+//        }
     } else if (closestPellet != currentPosition) {
         qWarning() << "Unable to find the closest pellet" << closestEnemy.x << closestEnemy.y << nextX << nextY;
     }
 
+    if (closestEnemy.pathLength < 10) {
+        //            qWarning() << "DANGER WILL ROBINSON";
+        features[EnemyClose] = 1.;
+    }
+
+    if (closestEnemy.pathLength < 2) {
+        features[EnemyVeryClose] = 1.;
+        //            qWarning() << "VERY DANGER WILL ROBINSON";
+    }
+
+    //        features[EnemyDangerous] = closestDangerous ? 1. : 0.;
+    features[EnemyDistance] = closestEnemy.pathLength / maxDistance;
+
     if (cameFrom.contains(closestEnemy)) {
+        if (closestEnemy.pathLength < 10) {
+//            qWarning() << "DANGER WILL ROBINSON";
+            features[EnemyClose] = 1.;
+        }
+
+        if (closestEnemy.pathLength < 2) {
+            features[EnemyVeryClose] = 1.;
+//            qWarning() << "VERY DANGER WILL ROBINSON";
+        }
+
 //        features[EnemyDangerous] = closestDangerous ? 1. : 0.;
-        features[EnemyDistance] = closestEnemy.pathLength / area;
+        features[EnemyDistance] = closestEnemy.pathLength / maxDistance;
 
-        while (cameFrom[closestEnemy].x != nextX || cameFrom[closestEnemy].y != nextY) {
-            closestEnemy = cameFrom[closestEnemy];
-            if (!cameFrom.contains(closestEnemy)) {
-                qWarning() << "Invalid enemy path";
-                break;
-            }
-        }
+//        while (cameFrom[closestEnemy].x != nextX || cameFrom[closestEnemy].y != nextY) {
+//            closestEnemy = cameFrom[closestEnemy];
+//            if (!cameFrom.contains(closestEnemy)) {
+//                qWarning() << "Invalid enemy path";
+//                break;
+//            }
+//        }
 
-        if (closestEnemy.x > nextX) {
-            features[EnemyRight] = 1.;
-        } else if (closestEnemy.x < nextX) {
-            features[EnemyLeft] = 1.;
-        } else if (closestEnemy.y > nextY) {
-            features[EnemyDown] = 1.;
-        } else if (closestEnemy.y < nextY) {
-            features[EnemyUp] = 1.;
-        } else {
-            qWarning() << "Don't know which direction the enemy is in";
-        }
+//        if (closestEnemy.x > nextX) {
+//            features[EnemyRight] = 1.;
+//        } else if (closestEnemy.x < nextX) {
+//            features[EnemyLeft] = 1.;
+//        } else if (closestEnemy.y > nextY) {
+//            features[EnemyDown] = 1.;
+//        } else if (closestEnemy.y < nextY) {
+//            features[EnemyUp] = 1.;
+//        } else {
+//            qWarning() << "Don't know which direction the enemy is in";
+//        }
 //    } else if (closestEnemy != currentPosition) {
 //        qWarning() << "Unable to find the closest enemy" << closestEnemy.x << closestEnemy.y << nextX << nextY;
     }
 
-    features[LeftBlocked]    = state.map.isValidPosition(nextX - 1, nextY) ? 0. : 1.;
-    features[RightBlocked]  = state.map.isValidPosition(nextX + 1, nextY) ? 0. : 1.;
-    features[UpBlocked]  = state.map.isValidPosition(nextX, nextY - 1) ? 0. : 1.;
-    features[DownBlocked] = state.map.isValidPosition(nextX, nextY + 1) ? 0. : 1.;
+//    features[LeftBlocked]    = state.map.isValidPosition(nextX - 1, nextY) ? 0. : 1.;
+//    features[RightBlocked]  = state.map.isValidPosition(nextX + 1, nextY) ? 0. : 1.;
+//    features[UpBlocked]  = state.map.isValidPosition(nextX, nextY - 1) ? 0. : 1.;
+//    features[DownBlocked] = state.map.isValidPosition(nextX, nextY + 1) ? 0. : 1.;
 
-    features[CanEatEnemy] = state.dangerous ? 1. : 0.;
+//    {
+//        State nextState = state;
+//        nextState.x = nextX;
+//        nextState.y = nextY;
+//        features[FreeNeighbors] = getValidActions(nextState).count() / 4.;
+//    }
 
-    features[GoingToEat] = state.map.powerupAt(nextX, nextY) != Map::NoPowerup;
+//    features[CanEatEnemy] = state.dangerous ? 1. : 0.;
+
+//    features[GoingToEat] = state.map.powerupAt(nextX, nextY) != Map::NoPowerup;
 
     features[Bias] =  1.;
 
@@ -411,19 +458,19 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
     //    return QVector<qreal>({f.enemiesNearby, f.eatsFood, f.pelletDistance, f.bias });
 }
 
-QList<Agent::Action> Agent::getValidActions(const State &state)
+QList<Agent::Action> Agent::getValidActions(const State &state) const
 {
     QList<Action> actions;
-    if (state.map.isValidPosition(state.x - 1, state.y)) {
+    if (state.map.isWalkable(state.x - 1, state.y)) {
         actions.append(Left);
     }
-    if (state.map.isValidPosition(state.x + 1, state.y)) {
+    if (state.map.isWalkable(state.x + 1, state.y)) {
         actions.append(Right);
     }
-    if (state.map.isValidPosition(state.x, state.y - 1)) {
+    if (state.map.isWalkable(state.x, state.y - 1)) {
         actions.append(Up);
     }
-    if (state.map.isValidPosition(state.x, state.y + 1)) {
+    if (state.map.isWalkable(state.x, state.y + 1)) {
         actions.append(Down);
     }
 

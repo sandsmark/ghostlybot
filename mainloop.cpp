@@ -53,11 +53,13 @@ void MainLoop::parseMessage(const QByteArray &message)
         parseStateUpdate(object["gamestate"].toObject());
         findAction();
     } else if (messageType == "dead") {
-        m_agent.update(m_currentState, m_lastAction, m_currentState, -100);
+        m_agent.update(m_currentState, m_lastAction, m_currentState, -100 - m_currentState.map.pelletsLeft());
         qDebug() << "I died";
     } else if (messageType == "endofround") {
         qDebug() << "Round over";
         m_agent.store();
+        // Since this is reset at the server end
+        m_currentState.score = 0;
     }
 }
 
@@ -83,12 +85,8 @@ void MainLoop::parseStateUpdate(const QJsonObject &state)
     newState.score = me["score"].toInt();
     newState.dangerous = me["isdangerous"].toInt();
 
-    newState.map.players.clear();
-    const QJsonArray others = state["others"].toArray();
-    for (const QJsonValue &otherVal : others) {
-        const QJsonObject other = otherVal.toObject();
-        newState.map.players.insert(other["id"].toInt(), Player(other));
-    }
+    newState.map.loadPlayers(state["others"].toArray());
+
     m_agent.update(m_currentState, m_lastAction, newState);
 
     m_currentState = std::move(newState);

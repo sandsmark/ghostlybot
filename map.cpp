@@ -90,6 +90,28 @@ bool Map::loadMap(const QJsonObject &data)
             }
         }
     }
+    m_pelletsLeft = data["pelletsleft"].toInt();
+
+    return true;
+}
+
+bool Map::loadPlayers(const QJsonArray &others)
+{
+    players.clear();
+    for (const QJsonValue &otherVal : others) {
+        const QJsonObject other = otherVal.toObject();
+        Player player(other);
+
+        if (!isWithinBounds(player.x, player.y)) {
+            return false;
+        }
+
+        const int pos = player.y * m_width + player.x;
+        m_tiles[pos] = OccupiedTile;
+
+        players.insert(player.id, std::move(player));
+//        players.insert(other["id"].toInt(), Player(other));
+    }
 
     return true;
 }
@@ -99,13 +121,23 @@ bool Map::isValid() const
     return (!m_tiles.isEmpty() && m_width * m_height == m_tiles.size());
 }
 
+bool Map::isWalkable(int x, int y) const
+{
+    if (!isWithinBounds(x, y)) {
+        return false;
+    }
+
+    const TileType tile = tileAt(x, y);
+    return (tile != WallTile && tile != InvalidTile && tile != OccupiedTile);
+}
+
 bool Map::isValidPosition(int x, int y) const
 {
     if (!isWithinBounds(x, y)) {
         return false;
     }
 
-    TileType tile = tileAt(x, y);
+    const TileType tile = tileAt(x, y);
     return (tile != WallTile && tile != InvalidTile);
 }
 

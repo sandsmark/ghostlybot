@@ -48,12 +48,14 @@ public:
         DoorTile,
         PelletTile,
         SuperPelletTile,
+        OccupiedTile,
         InvalidTile = -1
     };
 
     explicit Map();
 
     bool loadMap(const QJsonObject &data);
+    bool loadPlayers(const QJsonArray &others);
 
     int width() const { return m_width; }
     int height() const { return m_height; }
@@ -61,6 +63,7 @@ public:
     bool isNull() const;
     bool isValid() const;
 
+    bool isWalkable(int x, int y) const;
     bool isValidPosition(int x, int y) const;
     bool isWithinBounds(int x, int y) const;
 
@@ -72,12 +75,12 @@ public:
     int pelletsLeft() const { return m_pelletsLeft; }
 
     QPoint monsterSpawn() const { return m_monsterSpawn; }
+    TileType tileAt(int x, int y) const;
 
 
     QHash<int, Player> players;
 
 private:
-    TileType tileAt(int x, int y) const;
 
     int m_width;
     int m_height;

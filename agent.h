@@ -42,25 +42,30 @@ public:
     enum Feature {
         Bias = 0,
 //        EnemyDangerous = 0,
+        EnemyClose,
+        EnemyVeryClose,
         EnemyDistance,
-        EnemyUp,
-        EnemyDown,
-        EnemyRight,
-        EnemyLeft,
-        CanEatEnemy,
+//        EnemyUp,
+//        EnemyDown,
+//        EnemyRight,
+//        EnemyLeft,
+//        CanEatEnemy,
 
         PelletDistance,
-        PelletUp,
-        PelletDown,
-        PelletRight,
-        PelletLeft,
+//        PelletUp,
+//        PelletDown,
+//        PelletRight,
+//        PelletLeft,
 
-        UpBlocked,
-        DownBlocked,
-        LeftBlocked,
-        RightBlocked,
+//        UpBlocked,
+//        DownBlocked,
+//        LeftBlocked,
+//        RightBlocked,
+//        FreeNeighbors,
 
-        GoingToEat,
+        VictimDistance,
+
+//        GoingToEat,
 
         FeatureCount
     };
@@ -82,7 +87,7 @@ public:
     int currentY;
 
     // epsilon
-    qreal explorationRate = 0.1;
+    qreal explorationRate = 0.05;
     // gamma
     qreal discountFactor = 0.8;
     // alpha
@@ -100,7 +105,7 @@ public:
     void load();
 
 private:
-    QList<Action> getValidActions(const State &state);
+    QList<Action> getValidActions(const State &state) const;
 //    QHash<Features, qreal> m_weights;
     QVector<qreal> m_weights;
 
