@@ -83,7 +83,7 @@ void MainLoop::parseStateUpdate(const QJsonObject &state)
     newState.x = me["x"].toInt();
     newState.y = me["y"].toInt();
     newState.score = me["score"].toInt();
-    newState.dangerous = me["isdangerous"].toInt();
+    newState.dangerous = me["isdangerous"].toBool();
 
     newState.map.loadPlayers(state["others"].toArray());
 
@@ -117,7 +117,7 @@ void MainLoop::findAction()
         break;
     }
 
-    if (timer.elapsed() > 5) {
+    if (timer.elapsed() > 10) {
         qDebug() << "Action calculated in" << timer.elapsed() << "ms";
     }
 }

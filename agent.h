@@ -44,7 +44,8 @@ public:
 //        EnemyDangerous = 0,
         EnemyClose,
         EnemyVeryClose,
-        EnemyDistance,
+        PelletsAvailable,
+//        EnemyDistance,
 //        EnemyUp,
 //        EnemyDown,
 //        EnemyRight,
@@ -52,6 +53,7 @@ public:
 //        CanEatEnemy,
 
         PelletDistance,
+//        PelletManhattanDistance,
 //        PelletUp,
 //        PelletDown,
 //        PelletRight,
@@ -88,12 +90,13 @@ public:
 
     // epsilon
     qreal explorationRate = 0.05;
-    // gamma
+
+    // gamma, importance of future rewards
     qreal discountFactor = 0.8;
     // alpha
     qreal learningRate = 0.2;
 
-    void update(const State &state, const Action action, const State &nextState, qreal bonuspoints = 0);
+    void update(const State &state, const Action action, const State &nextState, const qreal bonuspoints = 0);
 
     qreal getQValue(const State &state, const Action action);
 
@@ -107,7 +110,8 @@ public:
 private:
     QList<Action> getValidActions(const State &state) const;
 //    QHash<Features, qreal> m_weights;
-    QVector<qreal> m_weights;
+    QVector<qreal> m_weightsA;
+    QVector<qreal> m_weightsB;
 
 //    std::random_device m_randomDevice;
 //    std::mt19937 m_randomGenerator;

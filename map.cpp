@@ -27,6 +27,7 @@ bool Map::loadMap(const QJsonObject &data)
     }
 
     m_tiles.clear();
+    m_tiles.reserve(m_width * m_height);
     for (int y=0; y<tiles.count(); y++) {
         const QString line = tiles[y].toString();
 
@@ -123,20 +124,25 @@ bool Map::isValid() const
 
 bool Map::isWalkable(int x, int y) const
 {
-    if (!isWithinBounds(x, y)) {
-        return false;
+    if (Q_UNLIKELY(x < 0)) {
+        x = width() - 1;
+    }
+    if (Q_UNLIKELY(y < 0)) {
+        y = height() - 1;
+    }
+    if (Q_UNLIKELY(x > width() - 1)) {
+        x = 0;
+    }
+    if (Q_UNLIKELY(y > height() - 1)) {
+        y = 0;
     }
 
     const TileType tile = tileAt(x, y);
-    return (tile != WallTile && tile != InvalidTile && tile != OccupiedTile);
+    return (tile != WallTile && tile != InvalidTile/* && tile != OccupiedTile*/);
 }
 
 bool Map::isValidPosition(int x, int y) const
 {
-    if (!isWithinBounds(x, y)) {
-        return false;
-    }
-
     const TileType tile = tileAt(x, y);
     return (tile != WallTile && tile != InvalidTile);
 }
@@ -159,11 +165,8 @@ QString Map::name() const
 
 Map::Powerup Map::powerupAt(int x, int y) const
 {
-    if (!isWithinBounds(x, y)) {
-        return NoPowerup;
-    }
     const int pos = y * m_width + x;
-    if (pos >= m_powerups.size()) {
+    if (pos >= m_powerups.size() || pos < 0) {
         return NoPowerup;
     }
     return m_powerups[pos];
@@ -193,11 +196,8 @@ Map::Powerup Map::takePowerup(int x, int y)
 
 Map::TileType Map::tileAt(int x, int y) const
 {
-    if (!isWithinBounds(x, y)) {
-        return InvalidTile;
-    }
     const int pos = y * m_width + x;
-    if (pos >= m_tiles.length()) {
+    if (pos >= m_tiles.length() || pos < 0) {
         return InvalidTile;
     }
     return m_tiles[pos];

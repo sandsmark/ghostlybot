@@ -57,8 +57,8 @@ public:
     bool loadMap(const QJsonObject &data);
     bool loadPlayers(const QJsonArray &others);
 
-    int width() const { return m_width; }
-    int height() const { return m_height; }
+    inline int width() const { return m_width; }
+    inline int height() const { return m_height; }
 
     bool isNull() const;
     bool isValid() const;
