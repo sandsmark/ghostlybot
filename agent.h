@@ -44,7 +44,7 @@ public:
 //        EnemyDangerous = 0,
         EnemyClose,
         EnemyVeryClose,
-        PelletsAvailable,
+//        PelletsAvailable,
 //        EnemyDistance,
 //        EnemyUp,
 //        EnemyDown,
@@ -53,6 +53,7 @@ public:
 //        CanEatEnemy,
 
         PelletDistance,
+//        SuperPelletDistance,
 //        PelletManhattanDistance,
 //        PelletUp,
 //        PelletDown,
@@ -66,6 +67,7 @@ public:
 //        FreeNeighbors,
 
         VictimDistance,
+//        LongestPath,
 
 //        GoingToEat,
 
@@ -78,6 +80,7 @@ public:
         Down,
         Left,
         Right,
+        NoAction,
         MaxAction
     };
     Q_ENUM(Action)
@@ -89,18 +92,18 @@ public:
     int currentY;
 
     // epsilon
-    qreal explorationRate = 0.05;
+    qreal explorationRate = 0.10;
 
     // gamma, importance of future rewards
-    qreal discountFactor = 0.8;
+    qreal discountFactor = 0.89;
     // alpha
-    qreal learningRate = 0.2;
+    qreal learningRate = 0.5;
 
     void update(const State &state, const Action action, const State &nextState, const qreal bonuspoints = 0);
 
-    qreal getQValue(const State &state, const Action action);
+    qreal getQValue(const State &state, const Action action, const QVector<qreal> &weights);
 
-    Action getAction(const State &map);
+    Action getAction(const State &map, bool inverted);
 
     QVector<qreal> calculateFeatures(const State &state, const Action action) const;
 

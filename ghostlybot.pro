@@ -3,6 +3,9 @@ QT -= gui
 
 CONFIG += c++11 optimize_full
 
+target.path = /usr/bin/
+INSTALLS += target
+
 TARGET = ghostlybot
 CONFIG += console
 CONFIG -= app_bundle

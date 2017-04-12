@@ -2,6 +2,7 @@
 
 #include "map.h"
 
+#include <QDir>
 #include <QTcpSocket>
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -47,13 +48,15 @@ void MainLoop::parseMessage(const QByteArray &message)
     if (messageType == "welcome") {
         qDebug() << "Got welcome";
         m_currentState.map.loadMap(object["map"].toObject());
-        m_socket->write("NAME MARTiN\n");
+        const QString name = QDir::current().dirName();
+        m_socket->write("NAME " + name.toUtf8() + "\n");
+//        m_socket->write("NAME MARTiN3\n");
         return;
     } else if (messageType == "stateupdate") {
         parseStateUpdate(object["gamestate"].toObject());
         findAction();
     } else if (messageType == "dead") {
-        m_agent.update(m_currentState, m_lastAction, m_currentState, -100 - m_currentState.map.pelletsLeft());
+        m_agent.update(m_currentState, m_lastAction, m_currentState,0 /*-100 - m_currentState.map.pelletsLeft()*/);
         qDebug() << "I died";
     } else if (messageType == "endofround") {
         qDebug() << "Round over";
@@ -82,6 +85,7 @@ void MainLoop::parseStateUpdate(const QJsonObject &state)
     const QJsonObject me = state["you"].toObject();
     newState.x = me["x"].toInt();
     newState.y = me["y"].toInt();
+    qDebug() << newState.x << newState.y;
     newState.score = me["score"].toInt();
     newState.dangerous = me["isdangerous"].toBool();
 
@@ -96,7 +100,7 @@ void MainLoop::findAction()
 {
     QElapsedTimer timer;
     timer.start();
-    switch(m_agent.getAction(m_currentState)) {
+    switch(m_agent.getAction(m_currentState, (qrand() > RAND_MAX/2))) {
     case Agent::Up:
 //        qDebug() << "up";
         m_socket->write("UP\n");
