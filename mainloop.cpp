@@ -48,7 +48,8 @@ void MainLoop::parseMessage(const QByteArray &message)
     if (messageType == "welcome") {
         qDebug() << "Got welcome";
         m_currentState.map.loadMap(object["map"].toObject());
-        const QString name = QDir::current().dirName();
+        const QString name = "MARTiN" + QString::number(qrand() % 100);
+//        const QString name = QDir::current().dirName();
         m_socket->write("NAME " + name.toUtf8() + "\n");
 //        m_socket->write("NAME MARTiN3\n");
         return;
@@ -85,7 +86,7 @@ void MainLoop::parseStateUpdate(const QJsonObject &state)
     const QJsonObject me = state["you"].toObject();
     newState.x = me["x"].toInt();
     newState.y = me["y"].toInt();
-    qDebug() << newState.x << newState.y;
+//    qDebug() << newState.x << newState.y;
     newState.score = me["score"].toInt();
     newState.dangerous = me["isdangerous"].toBool();
 
