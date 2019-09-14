@@ -1,0 +1,4 @@
+ * Simulation passes; separate thread, constantly update best action until best action fetched
+ * Opponent modelling;
+    * Reward Q-learning with matching behavior from opponent
+    * Chinese whispers/clustering for matched behavior after X rounds against opponent, match ID
