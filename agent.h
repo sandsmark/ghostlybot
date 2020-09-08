@@ -8,11 +8,26 @@
 #include <random>
 #include <QObject>
 
+#define FEAT_CANEATENEMY 0
+#define FEAT_ENEMYDANGEROUS 0
+#define FEAT_ENEMYDISTANCE 0
+#define FEAT_ENEMYPOSITION 0
+#define FEAT_PELLETSAVAILABLE 0
+#define FEAT_TOTALPELLETSAVAILABLE 0
+#define FEAT_SUPERPELLETDISTANCE 0
+#define FEAT_PELLETLOCATION 0
+#define FEAT_PELLETMANHATTANDISTANCE 0
+#define FEAT_LONGESTPATH 0
+#define FEAT_GOINGTOEAT 0
+
+
 struct Features {
     qreal enemiesNearby = 0.;
     qreal eatsFood = 0.;
     qreal pelletDistance = 0.;
-//    qreal superPelletDistance = 0.;
+#if FEAT_SUPERPELLETDISTANCE
+    qreal superPelletDistance = 0.;
+#endif
     qreal bias = 1.;
 };
 
@@ -23,7 +38,11 @@ inline bool operator==(const Features &f1, const Features &f2)
 
 inline uint qHash(const Features &f)
 {
-    return qHash(f.enemiesNearby) ^ qHash(f.eatsFood) ^ qHash(f.pelletDistance);// ^ qHash(f.superPelletDistance);
+    return qHash(f.enemiesNearby) ^ qHash(f.eatsFood) ^ qHash(f.pelletDistance)
+#if FEAT_SUPERPELLETDISTANCE
+        ^ qHash(f.superPelletDistance)
+#endif
+        ;
 }
 
 struct State {
@@ -41,24 +60,51 @@ class Agent
 public:
     enum Feature {
         Bias = 0,
-//        EnemyDangerous = 0,
+#if FEAT_ENEMYDANGEROUS
+        EnemyDangerous = 0,
+#endif
         EnemyClose,
         EnemyVeryClose,
-//        PelletsAvailable,
-//        EnemyDistance,
-//        EnemyUp,
-//        EnemyDown,
-//        EnemyRight,
-//        EnemyLeft,
-//        CanEatEnemy,
+
+#if FEAT_PELLETSAVAILABLE
+        PelletsAvailable,
+#endif
+
+#if FEAT_TOTALPELLETSAVAILABLE
+        TotalPelletsAvailable,
+#endif
+
+#if FEAT_ENEMYDISTANCE
+        EnemyDistance,
+#endif
+
+#if FEAT_ENEMYPOSITION
+        EnemyUp,
+        EnemyDown,
+        EnemyRight,
+        EnemyLeft,
+#endif
+
+#if FEAT_CANEATENEMY
+        CanEatEnemy,
+#endif
 
         PelletDistance,
-//        SuperPelletDistance,
-//        PelletManhattanDistance,
-//        PelletUp,
-//        PelletDown,
-//        PelletRight,
-//        PelletLeft,
+
+#if FEAT_SUPERPELLETDISTANCE
+        SuperPelletDistance,
+#endif
+
+#if FEAT_PELLETMANHATTANDISTANCE
+        PelletManhattanDistance,
+#endif
+
+#if FEAT_PELLETLOCATION
+        PelletUp,
+        PelletDown,
+        PelletRight,
+        PelletLeft,
+#endif
 
 //        UpBlocked,
 //        DownBlocked,
@@ -67,9 +113,13 @@ public:
 //        FreeNeighbors,
 
         VictimDistance,
-//        LongestPath,
+#if FEAT_LONGESTPATH
+        LongestPath,
+#endif
 
-//        GoingToEat,
+#if FEAT_GOINGTOEAT
+        GoingToEat,
+#endif
 
         FeatureCount
     };

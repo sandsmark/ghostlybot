@@ -312,15 +312,24 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 
     PathPoint closestEnemy(-1, -1);
     closestEnemy.pathLength = maxDistance;
+#if FEAT_ENEMYDANGEROUS
     bool closestDangerous = false;
+#endif
     PathPoint closestVictim(-1, -1);
     closestVictim.pathLength = maxDistance;
     PathPoint richestPoint(-1, -1);
     richestPoint.pellets = 0;
 
+#if FEAT_TOTALPELLETSAVAILABLE
     // Trick to avoid dead-end
-//    qreal pelletsAvailable = 0;
+    qreal totalPelletsAvailable = 0;
+#endif
+
+    // TODO: should maybe use the max on the map?
+#if FEAT_TOTALPELLETSAVAILABLE || FEAT_PELLETSAVAILABLE
     const qreal totalPellets = state.map.pelletsLeft();
+#endif
+
     qreal longestPath = 0;
 
     while (!toVisit.empty()) {
@@ -330,7 +339,9 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
         const Map::Powerup powerup = state.map.powerupAt(current.x, current.y);
 
         if (powerup != Map::NoPowerup) {
-//            pelletsAvailable++;
+#if FEAT_TOTALPELLETSAVAILABLE
+            totalPelletsAvailable++;
+#endif
             if (current.pathLength < closestPellet.pathLength) {
                 closestPellet = current;
             }
@@ -354,7 +365,9 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
             if (enemy.dangerous && !state.dangerous) {
                 if (current.pathLength < closestEnemy.pathLength) {
                     closestEnemy = current;
+#if FEAT_ENEMYDANGEROUS
                     closestDangerous = enemy.dangerous;
+#endif
                 }
             } else if (state.dangerous && !enemy.dangerous) {
                 if (current.x == nextX && current.y == nextY) {
@@ -445,12 +458,18 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
         }
     }
 //    qDebug() << "Longest path:" << longestPath;
-//    features[LongestPath] = longestPath / maxDistance;
+#if FEAT_LONGESTPATH
+    features[LongestPath] = longestPath / maxDistance;
+#endif
 
-    //    if (richestPoint.pellets) {
-    //        features[PelletsAvailable] = richestPoint.pellets / qreal(state.map.pelletsLeft());
-    //    }
-    //    features[PelletsAvailable] = pelletsAvailable / totalPellets;
+#if FEAT_PELLETSAVAILABLE
+    if (richestPoint.pellets) {
+        features[PelletsAvailable] = richestPoint.pellets / totalPellets;
+    }
+#endif
+#if FEAT_TOTALPELLETSAVAILABLE
+    features[TotalPelletsAvailable] = pelletsAvailable / totalPellets;
+#endif
 
     //    if (cameFrom.contains(closestVictim)) {
     if (closestVictim.x != -1) {
@@ -467,10 +486,16 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
     //    if (cameFrom.contains(closestPellet)) {
     if (closestPellet.x != -1) {
         features[PelletDistance] = closestPellet.pathLength / maxDistance;
+#if FEAT_PELLETMANHATTANDISTANCE
+        features[PelletManhattanDistance] = (qAbs(closestPellet.x - nextX) + qAbs(closestPellet.y - nextY)) / maxDistance;
+#endif
     }
-//    if (closestSuperPellet.x != -1) {
-//        features[SuperPelletDistance] = closestSuperPellet.pathLength / maxDistance;
-//    }
+#if FEAT_SUPERPELLETDISTANCE
+    if (closestSuperPellet.x != -1) {
+        features[SuperPelletDistance] = closestSuperPellet.pathLength / maxDistance;
+    }
+#endif
+
     //        if (qIsNull(features[PelletDistance]) && !(qIsNull(features[PelletDistance]) * m_weights[PelletDistance] || features[PelletDistance] == 0)) {
     //            qWarning() << closestPellet.pathLength;
 //        }
@@ -482,7 +507,6 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 //    qDebug() << closestPellet.x;
 //    if (cameFrom.contains(closestPellet)) {
 //        features[PelletDistance] = closestPellet.pathLength / maxDistance;
-//        features[PelletManhattanDistance] = (qAbs(closestPellet.x - nextX) + qAbs(closestPellet.y - nextY)) / maxDistance;
 
 //        while (cameFrom[closestPellet].x != nextX || cameFrom[closestPellet].y != nextY) {
 ////            qDebug() << closestPellet.x << closestPellet.y;
@@ -494,24 +518,31 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 //        }
 
 //        qDebug() << action;
-//        if (closestPellet.x > nextX) {
-//            qDebug() << "Pellet down";
-////            features[PelletRight] = 1.;
-//        } else if (closestPellet.x < nextX) {
-////            features[PelletLeft] = 1.;
-//            qDebug() << "Pellet up";
-//        } else if (closestPellet.y > nextY) {
-////            features[PelletDown] = 1.;
-//            qDebug() << "Pellet right";
-//        } else if (closestPellet.y < nextY) {
-////            features[PelletUp] = 1.;
-//            qDebug() << "Pellet left";
-//        } else {
-//            qWarning() << "Don't know which direction the pellet is in";
-//        }
-//    } else if (closestPellet != currentPosition) {
-//        qWarning() << "Unable to find the closest pellet" << closestEnemy.x << closestEnemy.y << nextX << nextY;
-//    }
+
+#if FEAT_PELLETLOCATION
+        if (closestPellet.x > nextX) {
+            qDebug() << "Pellet down";
+            features[PelletRight] = 1.;
+        } else if (closestPellet.x < nextX) {
+            features[PelletLeft] = 1.;
+            qDebug() << "Pellet up";
+        } else if (closestPellet.y > nextY) {
+            features[PelletDown] = 1.;
+            qDebug() << "Pellet right";
+        } else if (closestPellet.y < nextY) {
+            features[PelletUp] = 1.;
+            qDebug() << "Pellet left";
+        } else {
+            qWarning() << "Don't know which direction the pellet is in";
+        }
+    } else if (closestPellet != currentPosition) {
+        qWarning() << "Unable to find the closest pellet" << closestEnemy.x << closestEnemy.y << nextX << nextY;
+    }
+#endif
+
+#if FEAT_ENEMYDANGEROUS
+    features[EnemyDangerous] = closestDangerous ? 1. : 0.;
+#endif
 
 //    if (closestEnemy.pathLength < 10) {
 //        //            qWarning() << "DANGER WILL ROBINSON";
@@ -539,8 +570,9 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 //            qWarning() << "VERY DANGER WILL ROBINSON";
         }
 
-//        features[EnemyDangerous] = closestDangerous ? 1. : 0.;
-//        features[EnemyDistance] = 1. - closestEnemy.pathLength / maxDistance;
+#if FEAT_ENEMYDISTANCE
+        features[EnemyDistance] = 1. - closestEnemy.pathLength / maxDistance;
+#endif
 
 //        while (cameFrom[closestEnemy].x != nextX || cameFrom[closestEnemy].y != nextY) {
 //            closestEnemy = cameFrom[closestEnemy];
@@ -550,17 +582,19 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 //            }
 //        }
 
-//        if (closestEnemy.x > nextX) {
-//            features[EnemyRight] = 1.;
-//        } else if (closestEnemy.x < nextX) {
-//            features[EnemyLeft] = 1.;
-//        } else if (closestEnemy.y > nextY) {
-//            features[EnemyDown] = 1.;
-//        } else if (closestEnemy.y < nextY) {
-//            features[EnemyUp] = 1.;
-//        } else {
-//            qWarning() << "Don't know which direction the enemy is in";
-//        }
+#if FEAT_ENEMYPOSITION
+        if (closestEnemy.x > nextX) {
+            features[EnemyRight] = 1.;
+        } else if (closestEnemy.x < nextX) {
+            features[EnemyLeft] = 1.;
+        } else if (closestEnemy.y > nextY) {
+            features[EnemyDown] = 1.;
+        } else if (closestEnemy.y < nextY) {
+            features[EnemyUp] = 1.;
+        } else {
+            qWarning() << "Don't know which direction the enemy is in";
+        }
+#endif
 //    } else if (closestEnemy != currentPosition) {
 //        qWarning() << "Unable to find the closest enemy" << closestEnemy.x << closestEnemy.y << nextX << nextY;
     }
@@ -577,9 +611,13 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
 //        features[FreeNeighbors] = getValidActions(nextState).count() / 4.;
 //    }
 
-//    features[CanEatEnemy] = state.dangerous ? 1. : 0.;
+#if FEAT_CANEATENEMY
+    features[CanEatEnemy] = state.dangerous ? 1. : 0.;
+#endif
 
-//    features[GoingToEat] = state.map.powerupAt(nextX, nextY) != Map::NoPowerup;
+#if FEAT_GOINGTOEAT
+    features[GoingToEat] = state.map.powerupAt(nextX, nextY) != Map::NoPowerup;
+#endif
 
     features[Bias] =  1.;
 
