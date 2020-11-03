@@ -345,7 +345,7 @@ QVector<qreal> Agent::calculateFeatures(const State &state, const Agent::Action 
         }
 
         bool pathBlocked = false;
-        // FIXME
+        // should maybe improve this, aka. me fix
         for (const Player &enemy : state.map.players) {
             if (enemy.x != current.x || enemy.y != current.y) {
                 continue;
